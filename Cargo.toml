@@ -1,0 +1,7 @@
+[workspace]
+resolver = "3"
+
+members = ["crates/*"]
+
+[workspace.dependencies]
+glam = "0.30.9"

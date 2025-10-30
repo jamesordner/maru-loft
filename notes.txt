@@ -1,0 +1,33 @@
+## Priorities
+
+1. Lofting library
+2. Visualization
+3. UI
+
+## Lofting Library
+
+Build as a standalone library, with an API + data model that can be used by any frontend.
+
+Stateful + serializable state, for synchronization.
+
+### Thoughts
+
+- Editing should be as non-destructive as possible. This requires thinking through the
+  stored state/sketch mapping data structure.
+- Stretch: provide tools to selectively modify the lofting algorithm's output.
+
+### Algorithm
+
+1. Insert additional vertices into each sketch based on angular error.
+2. Construct a mapping from vertices in each sketch.
+
+## Dependencies
+
+- *glam:* linear algebra.
+
+## Progress Log
+
+Start with loft lib API sketch.
+Think about the data model/how to persist state across edits.
+Complications with just vertex-vertex mappings and edge-edge mappings, so do vertex range-vertex range mappings.
+Range-range also neatly handles insertions.

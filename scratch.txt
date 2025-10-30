@@ -1,0 +1,14 @@
+Data structure persistance
+
+Per edge? Then we can invalidate each edge as needed.
+
+What situations actually lead to invalidation:
+
+- Deleting a sketch
+- Adding/removing vertices
+  - This is similar to split edge/merge edges, so the data model working on edges makes sense.
+
+Keep original sketches and any intermediate mesh state separate.
+
+When a vertex is added, any interactions with the edge need to be recomputed.
+When a vertex is removed, any interactions with both edges connected to it need to be recomputed.
