@@ -12,3 +12,22 @@ Keep original sketches and any intermediate mesh state separate.
 
 When a vertex is added, any interactions with the edge need to be recomputed.
 When a vertex is removed, any interactions with both edges connected to it need to be recomputed.
+
+Can we just store vertex-vertex mappings from one layer to the next?
+This is the closest representation of what's physically happening.
+On vertex addition:
+- Find vertices of edge we're splitting
+- Find their mappings to other sketch's vertices
+- Take only the other sketch's vertices which are part of the face being split
+- Recompute just that face
+On vertex removal:
+- Find adjacent vertices on sketch
+- Find their mappings to other sketch's vertices
+- Take only the other sketch's vertices which are part of the two faces being affected
+- Recompute that whole area
+
+If we go with this, it's sounding like the lofting algorithm should work on collections of faces (potentially n-gons)
+More concretely, a range of adjacent vertices on one sketch (can be a single vertex) paired with a range of adjacent vertices on the other sketch.
+
+So, we store:
+- Vertex range pairs for each sketch.

@@ -15,6 +15,12 @@ Stateful + serializable state, for synchronization.
 - Editing should be as non-destructive as possible. This requires thinking through the
   stored state/sketch mapping data structure.
 - Stretch: provide tools to selectively modify the lofting algorithm's output.
+- API options: some operations will require recomputing the loft, some will not.
+  - Expose everthing via a flat, top-level API, so that we can handle recomputing. Larger top-level API,
+    but easy to handle.
+  - Expose sub-objects (like `Sketch`) and put some vars in a `Cell`, so that they can be modified via
+    `&self` functions. Only recompute on `&mut self` functions. Cleaner, smaller API, but also more complex
+    and potentially unintuitive.
 
 ### Algorithm
 
@@ -29,5 +35,3 @@ Stateful + serializable state, for synchronization.
 
 Start with loft lib API sketch.
 Think about the data model/how to persist state across edits.
-Complications with just vertex-vertex mappings and edge-edge mappings, so do vertex range-vertex range mappings.
-Range-range also neatly handles insertions.
