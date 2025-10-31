@@ -114,28 +114,29 @@ struct LoftMap {
 struct LoftSection {
     /// Range of vertices in the original sketches in this section (range
     /// inclusive).
-    vertex_ranges: LoftPair<(VertexId, VertexId)>,
+    vertex_ranges: Pair<(VertexId, VertexId)>,
     /// Explicit vertices used for edge connections in this section. There may
     /// be additional, generated loft vertices which are not present in the set
     /// of vertices in the original sketches.
-    loft_vertices: LoftPair<Vec<LoftVertex>>,
+    loft_vertices: Pair<Vec<LoftVertex>>,
     /// Explicit edge connections between loft vertices in this section.
-    edges: Vec<LoftPair<usize>>,
+    edges: Vec<Pair<usize>>,
 }
 
 /// A vertex used to form an edge to another sketch. A loft vertex may lie along
 /// the edge of a sketch, i.e. it might not be present in the original set of
 /// sketch vertices.
 struct LoftVertex {
+    /// Adjacent vertices forming an edge in the original sketch.
     edge: (VertexId, VertexId),
     /// A value in range [0, 1] which determines where the vertex lies along the
-    /// edge.
+    /// sketch's edge.
     slide: f32,
 }
 
-/// Paired values. Used for i.e. loft edge connections or paired vertex ranges
+/// Paired values. Used for i.e. edge connections or paired vertex ranges
 /// between sketches.
-struct LoftPair<T> {
+struct Pair<T> {
     lower_sketch: T,
     upper_sketch: T,
 }

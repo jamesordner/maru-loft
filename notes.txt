@@ -24,6 +24,13 @@ Stateful + serializable state, for synchronization.
 
 ### Algorithm
 
+#### Constraints
+
+- Number of edges connecting sketches >= number of vertices on the sparsest sketch
+- Rotation is applied before lofting, position is not
+
+#### Overview
+
 1. Insert additional vertices into each sketch based on angular error.
 2. Construct a mapping from vertices in each sketch.
 
