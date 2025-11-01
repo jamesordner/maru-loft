@@ -21,18 +21,25 @@ Stateful + serializable state, for synchronization.
   - Expose sub-objects (like `Sketch`) and put some vars in a `Cell`, so that they can be modified via
     `&self` functions. Only recompute on `&mut self` functions. Cleaner, smaller API, but also more complex
     and potentially unintuitive.
+- Lofting
+  - Use radial error vs positional (xy) error, to account for sketches that may be scaled much larger
+  - To determine number of edges, allow the user to specify. Otherwise, default to the number of vertices in the sketch with the most vertices
 
 ### Algorithm
 
 #### Constraints
 
-- Number of edges connecting sketches >= number of vertices on the sparsest sketch
-- Rotation is applied before lofting, position is not
+- Only sketches with increasing radial angle between vertices allowed (i.e. a line drawn from the center of the sketch outwards
+  will only intersect the boundary once).
+- Rotation is applied before lofting, position is not.
 
 #### Overview
 
-1. Insert additional vertices into each sketch based on angular error.
-2. Construct a mapping from vertices in each sketch.
+1. Sort all vertex-vertex connections by radial error.
+2. Take edge with least error.
+3. Repeat 1-2 until all valid vertex-vertex connections have been formed, taking max radial edge angle into account.
+4. Create sections from formed faces (potentially n-gons).
+5. Finalize sections. For each unconnected vertex in each section, create an intermediate vertex on opposite sketch edge with radial angle of 0.
 
 ## Dependencies
 
@@ -42,3 +49,4 @@ Stateful + serializable state, for synchronization.
 
 Start with loft lib API sketch.
 Think about the data model/how to persist state across edits.
+Think about algorithm and parameters/tuning.
