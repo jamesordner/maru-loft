@@ -29,6 +29,7 @@ Stateful + serializable state, for synchronization.
 
 #### Constraints
 
+- (0, 0) lies within the sketch.
 - Only sketches with increasing radial angle between vertices allowed (i.e. a line drawn from the center of the sketch outwards
   will only intersect the boundary once).
 - Rotation is applied before lofting, position is not.
@@ -50,3 +51,5 @@ Stateful + serializable state, for synchronization.
 Start with loft lib API sketch.
 Think about the data model/how to persist state across edits.
 Think about algorithm and parameters/tuning.
+Use law of sines to calculate intermediate vertices that lie along sketch edges.
+To create mesh, iterate each section. For each section, iterate the vertices of each sketch's edge.

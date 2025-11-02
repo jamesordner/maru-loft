@@ -2,12 +2,12 @@ use glam::{Vec3, Vec3Swizzles};
 
 pub use crate::sketch::SketchDescriptor;
 use crate::{
-    loft_map::{LoftMap, LoftMapBuilder},
+    loft::{Loft, LoftBuilder},
     sketch::{Sketch, VertexId},
     util::SketchPair,
 };
 
-mod loft_map;
+mod loft;
 mod sketch;
 mod util;
 
@@ -29,7 +29,7 @@ pub struct Lofter {
     sketches: Vec<Sketch>,
     /// Mappings for each pair of sketches. There will always be one-fewer
     /// mappings than the number of sketches.
-    loft_maps: Vec<LoftMap>,
+    loft_maps: Vec<Loft>,
 }
 
 impl Lofter {
@@ -116,8 +116,8 @@ impl Lofter {
     }
 }
 
-fn loft_sketches(sketches: SketchPair<&Sketch>, options: &LoftOptions) -> LoftMap {
-    let mut loft_map_builder = LoftMapBuilder::new(sketches);
+fn loft_sketches(sketches: SketchPair<&Sketch>, options: &LoftOptions) -> Loft {
+    let mut loft_map_builder = LoftBuilder::new(sketches);
 
     // Get edge candidates, which are all combinations of vertices between
     // sketches.

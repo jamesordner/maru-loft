@@ -7,11 +7,8 @@ pub struct SketchPair<T> {
 }
 
 impl<T> SketchPair<T> {
-    pub fn new(lower_sketch: T, upper_sketch: T) -> Self {
-        Self {
-            lower: lower_sketch,
-            upper: upper_sketch,
-        }
+    pub fn new(lower: T, upper: T) -> Self {
+        Self { lower, upper }
     }
 
     /// Duplicate `val` to both values in the pair.
