@@ -27,6 +27,32 @@ fn integration() {
     });
 
     lofter.loft(&LoftOptions {
-        max_radial_edge_angle: 1.,
+        max_radial_edge_angle: 5.,
     });
+
+    let vb = lofter.vertex_buffer();
+
+    let mut obj_string = String::new();
+    let mut i = 1;
+
+    for tri in &vb {
+        for vert in tri {
+            obj_string.push_str("v ");
+            for axis in vert.to_array() {
+                obj_string.push_str(&axis.to_string());
+                obj_string.push(' ');
+            }
+            obj_string.push('\n');
+        }
+
+        obj_string.push_str("f ");
+        for _ in 0..3 {
+            obj_string.push_str(&i.to_string());
+            i += 1;
+            obj_string.push(' ');
+        }
+        obj_string.push('\n');
+    }
+
+    dbg!(obj_string);
 }

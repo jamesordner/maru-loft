@@ -1,10 +1,12 @@
-use glam::{Vec3, Vec3Swizzles};
+use std::iter::zip;
+
+use glam::Vec3;
 
 pub use crate::sketch::SketchDescriptor;
 use crate::{
     loft::{Loft, LoftBuilder},
     sketch::{Sketch, VertexId},
-    util::SketchPair,
+    util::{SketchPair, radial_error},
 };
 
 mod loft;
@@ -111,8 +113,19 @@ impl Lofter {
             .windows(2)
             .map(|sketches| loft_sketches(SketchPair::new(&sketches[0], &sketches[1]), options))
             .collect();
+    }
 
-        dbg!(&self.loft_maps);
+    pub fn vertex_buffer(&self) -> Vec<[Vec3; 3]> {
+        let mut vertex_buffer = Vec::new();
+
+        let sketches = self.sketches.windows(2);
+
+        for (loft_map, sketches) in zip(&self.loft_maps, sketches) {
+            let sketches = SketchPair::new(&sketches[0], &sketches[1]);
+            loft_map.append_vertex_buffer(&mut vertex_buffer, sketches);
+        }
+
+        vertex_buffer
     }
 }
 
@@ -125,8 +138,6 @@ fn loft_sketches(sketches: SketchPair<&Sketch>, options: &LoftOptions) -> Loft {
 
     // Sort edge candidates by increasing radial error.
     edge_candidates.sort_unstable_by(|a, b| a.radial_error.total_cmp(&b.radial_error));
-
-    dbg!(&edge_candidates);
 
     let max_radial_error = options.max_radial_edge_angle.to_radians();
 
@@ -142,7 +153,7 @@ fn loft_sketches(sketches: SketchPair<&Sketch>, options: &LoftOptions) -> Loft {
 
     // resolve sections
 
-    loft_map_builder.build()
+    loft_map_builder.build(max_radial_error)
 }
 
 #[derive(Debug)]
@@ -165,12 +176,4 @@ fn edge_candidates(sketches: SketchPair<&Sketch>) -> Vec<EdgeCandidate> {
             vertices: SketchPair::new(*v_a.0, *v_b.0),
         })
         .collect()
-}
-
-/// Returns the radial difference of two points along the z axis, in radians.
-fn radial_error(a: &Vec3, b: &Vec3) -> f32 {
-    let a = a.xy().normalize_or_zero();
-    let b = b.xy().normalize_or_zero();
-
-    a.dot(b).acos()
 }

@@ -53,3 +53,7 @@ Think about the data model/how to persist state across edits.
 Think about algorithm and parameters/tuning.
 Use law of sines to calculate intermediate vertices that lie along sketch edges.
 To create mesh, iterate each section. For each section, iterate the vertices of each sketch's edge.
+
+## Improvements / Next Steps
+
+- Provide additional lofting algorithms, each with their own options.
