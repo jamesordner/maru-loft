@@ -4,7 +4,6 @@ use glam::{Vec3, Vec3Swizzles};
 use rand::Rng;
 
 use crate::{
-    edge_candidates,
     sketch::{Sketch, VertexId},
     util::{SketchPair, radial_error},
 };

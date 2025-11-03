@@ -15,17 +15,6 @@ impl<T> SketchPair<T> {
         Self { lower, upper }
     }
 
-    /// Duplicate `val` to both values in the pair.
-    pub fn splat(val: T) -> Self
-    where
-        T: Clone,
-    {
-        Self {
-            lower: val.clone(),
-            upper: val,
-        }
-    }
-
     pub fn as_ref(&self) -> SketchPair<&T> {
         SketchPair {
             lower: &self.lower,

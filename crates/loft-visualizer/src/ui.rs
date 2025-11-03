@@ -1,8 +1,10 @@
 use std::time::Instant;
 
+use glam::{Vec2, Vec3Swizzles};
 use imgui::{Condition, FontSource, MouseCursor};
 use imgui_wgpu::RendererConfig;
 use imgui_winit_support::WinitPlatform;
+use lofter::Lofter;
 use winit::event::Event;
 
 use crate::render::Renderer;
@@ -85,8 +87,7 @@ impl ImguiState {
             .handle_event::<()>(self.context.io_mut(), &renderer.window, event);
     }
 
-    /// Todo: return UI events.
-    pub fn draw(&mut self, renderer: &Renderer, view: &wgpu::TextureView) {
+    pub fn draw(&mut self, renderer: &Renderer, view: &wgpu::TextureView, lofter: &mut Lofter) {
         let now = Instant::now();
         self.context
             .io_mut()
@@ -99,38 +100,101 @@ impl ImguiState {
 
         let ui = self.context.frame();
 
-        {
-            let mp = ui.io().mouse_pos;
+        ui.window("Lofter")
+            .size([200.0, 500.0], Condition::FirstUseEver)
+            .build(|| {
+                ui.separator();
 
-            let window = ui.window("Lofter");
-            window
-                .size([300.0, 100.0], Condition::FirstUseEver)
-                .build(|| {
-                    ui.text("Something about sketches perhaps");
-                    ui.separator();
+                ui.child_window("Upper sketch")
+                    .size([200.; _])
+                    .movable(false)
+                    .build(|| {
+                        let window_pos = Vec2::from_array(ui.window_pos());
+                        let window_size = Vec2::from_array(ui.window_size());
+                        let window_center = window_pos + window_size / 2.;
 
-                    ui.slider("Max angle", 0.1, 60., &mut self.loft_state.max_angle);
-                    ui.slider("Rotation", -180., 180., &mut self.loft_state.rotation);
+                        let draw_list = ui.get_window_draw_list();
+                        let points: Vec<_> = lofter
+                            .vertices(1)
+                            .unwrap()
+                            .map(|(_, pos)| (window_center + pos.xy() * 50.).to_array())
+                            .collect();
 
-                    ui.separator();
+                        draw_list
+                            .add_polyline(points.clone(), [1., 0., 0.])
+                            .filled(true)
+                            .build();
 
-                    if ui.button("Loft") {
-                        self.loft_state.reloft = true;
-                    }
+                        for point in &points {
+                            draw_list
+                                .add_rect(
+                                    (Vec2::from_array(*point) - Vec2::splat(5.)).to_array(),
+                                    (Vec2::from_array(*point) + Vec2::splat(5.)).to_array(),
+                                    [1., 1., 1.],
+                                )
+                                .build();
+                        }
+                    });
 
-                    let draw_list = ui.get_window_draw_list();
-                    draw_list
-                        .add_polyline(
-                            vec![
-                                [mp[0], mp[1] + 5.],
-                                [mp[0] - 5., mp[1] - 5.],
-                                [mp[0] + 5., mp[1] - 5.],
-                            ],
-                            [1., 0., 0.],
-                        )
-                        .build();
-                });
-        }
+                ui.separator();
+
+                ui.child_window("Lower sketch")
+                    .size([200.; _])
+                    .movable(false)
+                    .build(|| {
+                        let window_pos = Vec2::from_array(ui.window_pos());
+                        let window_size = Vec2::from_array(ui.window_size());
+                        let window_center = window_pos + window_size / 2.;
+
+                        let draw_list = ui.get_window_draw_list();
+                        let points: Vec<_> = lofter
+                            .vertices(0)
+                            .unwrap()
+                            .map(|(_, pos)| (window_center + pos.xy() * 50.).to_array())
+                            .collect();
+
+                        draw_list
+                            .add_polyline(points.clone(), [1., 0., 0.])
+                            .filled(true)
+                            .build();
+
+                        for point in &points {
+                            draw_list
+                                .add_rect(
+                                    (Vec2::from_array(*point) - Vec2::splat(5.)).to_array(),
+                                    (Vec2::from_array(*point) + Vec2::splat(5.)).to_array(),
+                                    [1., 1., 1.],
+                                )
+                                .build();
+                        }
+                    });
+
+                ui.separator();
+
+                ui.slider("Max angle", 0.1, 60., &mut self.loft_state.max_angle);
+                ui.slider("Rotation", -180., 180., &mut self.loft_state.rotation);
+                if ui.button("Loft") {
+                    self.loft_state.reloft = true;
+                }
+            });
+
+        ui.window("Vertices").build(|| {
+            let mut i = 0;
+
+            lofter.vertices_mut(1, |(_, vert)| {
+                let label = i.to_string();
+                i += 1;
+                ui.input_float3(&label, vert.as_mut()).build();
+            });
+
+            ui.separator();
+
+            lofter.vertices_mut(0, |(_, vert)| {
+                let label = i.to_string();
+                i += 1;
+                ui.input_float3(&label, vert.as_mut()).build();
+            });
+        });
 
         let mut encoder: wgpu::CommandEncoder = renderer
             .device

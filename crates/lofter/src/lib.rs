@@ -122,6 +122,18 @@ impl Lofter {
         )
     }
 
+    /// Iterates over all vertices in a sketch, in CCW order.
+    pub fn vertices_mut<F>(&mut self, sketch_index: usize, mut f: F)
+    where
+        F: FnMut((VertexId, &mut Vec3)),
+    {
+        let sketch = &mut self.sketches[sketch_index];
+
+        for id in &sketch.vertex_order {
+            f((*id, &mut sketch.vertex_map.get_mut(id).unwrap()));
+        }
+    }
+
     pub fn get_vertex(&self, sketch_index: usize, vertex_id: VertexId) -> Option<&Vec3> {
         self.sketches.get(sketch_index)?.vertex_map.get(&vertex_id)
     }
@@ -146,6 +158,11 @@ impl Lofter {
             .collect();
     }
 
+    /// Returns a vertex buffer containing interleaved vertex positions and
+    /// colors.
+    ///
+    /// `[Vec3; 2] == vertex [position, color]`
+    /// `[[Vec3; 2]; 3] == triangle with three vertices`
     pub fn vertex_buffer(&self) -> Vec<[[Vec3; 2]; 3]> {
         let mut vertex_buffer = Vec::new();
 

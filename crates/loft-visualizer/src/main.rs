@@ -1,5 +1,5 @@
 use glam::Vec3;
-use lofter::{LoftOptions, Lofter, SketchDescriptor};
+use lofter::{LoftOptions, Lofter};
 use std::sync::Arc;
 use winit::{
     application::ApplicationHandler,
@@ -112,7 +112,7 @@ impl ApplicationHandler for App {
                     .create_view(&wgpu::TextureViewDescriptor::default());
 
                 app_window.renderer.draw(&view);
-                imgui.draw(&app_window.renderer, &view);
+                imgui.draw(&app_window.renderer, &view, &mut self.lofter);
 
                 // Check UI changes.
 

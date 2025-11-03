@@ -38,7 +38,7 @@ fn integration() {
     for tri in &vb {
         for vert in tri {
             obj_string.push_str("v ");
-            for axis in vert.to_array() {
+            for axis in vert[0].to_array() {
                 obj_string.push_str(&axis.to_string());
                 obj_string.push(' ');
             }
