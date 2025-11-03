@@ -19,6 +19,7 @@ pub struct ImguiState {
 pub struct LoftState {
     pub reloft: bool,
     pub max_angle: f32,
+    pub rotation: f32,
 }
 
 impl Default for LoftState {
@@ -26,6 +27,7 @@ impl Default for LoftState {
         Self {
             reloft: false,
             max_angle: 30.,
+            rotation: 0.,
         }
     }
 }
@@ -108,6 +110,7 @@ impl ImguiState {
                     ui.separator();
 
                     ui.slider("Max angle", 0.1, 60., &mut self.loft_state.max_angle);
+                    ui.slider("Rotation", -180., 180., &mut self.loft_state.rotation);
 
                     ui.separator();
 

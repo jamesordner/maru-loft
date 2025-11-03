@@ -1,9 +1,10 @@
 use std::{array::from_fn, f32::consts::PI};
 
 use glam::{Vec3, Vec3Swizzles};
-use rand::{Rng, thread_rng};
+use rand::Rng;
 
 use crate::{
+    edge_candidates,
     sketch::{Sketch, VertexId},
     util::{SketchPair, radial_error},
 };
@@ -15,7 +16,7 @@ pub struct Loft {
 
     /// This loft map only exists when no sections could be formed (which
     /// normally contain individual loft maps).
-    sectionless_loft_map: Option<Vec<SketchPair<LoftVertex>>>,
+    sectionless_loft_map: Option<Vec<LoftEdge>>,
 }
 
 impl Loft {
@@ -47,40 +48,38 @@ impl Loft {
         fn append_iterator<'a>(
             vertex_buffer: &mut Vec<[[Vec3; 2]; 3]>,
             sketches: SketchPair<&Sketch>,
-            mut prev_loft_edge: &'a SketchPair<LoftVertex>,
-            loft_edges: impl Iterator<Item = &'a SketchPair<LoftVertex>>,
+            mut prev_loft_edge: &'a LoftEdge,
+            loft_edges: impl Iterator<Item = &'a LoftEdge>,
         ) {
-            let mut rng = rand::rng();
-
             for loft_edge in loft_edges {
                 // Color each face a different random color.
-                let color = Vec3::from(from_fn(|_| rng.random()));
+                let color = loft_edge.color;
 
-                if prev_loft_edge.lower == loft_edge.lower {
+                if prev_loft_edge.edge.lower == loft_edge.edge.lower {
                     // Tri.
                     vertex_buffer.push([
-                        [prev_loft_edge.upper.to_pos(sketches.upper), color],
-                        [loft_edge.lower.to_pos(sketches.lower), color],
-                        [loft_edge.upper.to_pos(sketches.upper), color],
+                        [prev_loft_edge.edge.upper.to_pos(sketches.upper), color],
+                        [loft_edge.edge.lower.to_pos(sketches.lower), color],
+                        [loft_edge.edge.upper.to_pos(sketches.upper), color],
                     ]);
-                } else if prev_loft_edge.upper == loft_edge.upper {
+                } else if prev_loft_edge.edge.upper == loft_edge.edge.upper {
                     // Tri.
                     vertex_buffer.push([
-                        [prev_loft_edge.upper.to_pos(sketches.upper), color],
-                        [prev_loft_edge.lower.to_pos(sketches.lower), color],
-                        [loft_edge.lower.to_pos(sketches.lower), color],
+                        [prev_loft_edge.edge.upper.to_pos(sketches.upper), color],
+                        [prev_loft_edge.edge.lower.to_pos(sketches.lower), color],
+                        [loft_edge.edge.lower.to_pos(sketches.lower), color],
                     ]);
                 } else {
                     // Quad.
                     vertex_buffer.push([
-                        [prev_loft_edge.upper.to_pos(sketches.upper), color],
-                        [prev_loft_edge.lower.to_pos(sketches.lower), color],
-                        [loft_edge.lower.to_pos(sketches.lower), color],
+                        [prev_loft_edge.edge.upper.to_pos(sketches.upper), color],
+                        [prev_loft_edge.edge.lower.to_pos(sketches.lower), color],
+                        [loft_edge.edge.lower.to_pos(sketches.lower), color],
                     ]);
                     vertex_buffer.push([
-                        [prev_loft_edge.upper.to_pos(sketches.upper), color],
-                        [loft_edge.lower.to_pos(sketches.lower), color],
-                        [loft_edge.upper.to_pos(sketches.upper), color],
+                        [prev_loft_edge.edge.upper.to_pos(sketches.upper), color],
+                        [loft_edge.edge.lower.to_pos(sketches.lower), color],
+                        [loft_edge.edge.upper.to_pos(sketches.upper), color],
                     ]);
                 }
 
@@ -201,9 +200,12 @@ impl<'a> LoftBuilder<'a> {
         let mut loft = self.loft;
 
         if loft.sections.is_empty() {
-            let sketch_vertex_ranges = self
-                .sketches
-                .map(|sketch| sketch.vertex_order[0])
+            // Use starting vertices with the smallest radial error.
+            let mut edge_candidates = crate::edge_candidates(self.sketches);
+            edge_candidates.sort_unstable_by(|a, b| a.radial_error.total_cmp(&b.radial_error));
+
+            let sketch_vertex_ranges = edge_candidates[0]
+                .vertices
                 .map(|id| SketchVertexRange::entire(id));
 
             let loft_edges =
@@ -220,15 +222,6 @@ impl<'a> LoftBuilder<'a> {
     }
 }
 
-enum LoftType {
-    Whole {
-        loft_egdes: Vec<SketchPair<LoftVertex>>,
-    },
-    Sectioned {
-        sections: Vec<LoftSection>,
-    },
-}
-
 /// A "section" of a loft connects a range of vertices from one sketch to a
 /// range of vertices in another sketch.
 #[derive(Debug)]
@@ -236,7 +229,7 @@ struct LoftSection {
     /// Ranges of vertices that this section covers in the original sketches.
     sketch_vertex_ranges: SketchPair<SketchVertexRange>,
     /// All edges between sketches in this section, sorted in CCW order.
-    loft_edges: Vec<SketchPair<LoftVertex>>,
+    loft_edges: Vec<LoftEdge>,
 }
 
 impl LoftSection {
@@ -384,10 +377,10 @@ enum LoftVertex {
 impl LoftVertex {
     fn to_pos(&self, sketch: &Sketch) -> Vec3 {
         let relative_pos = match self {
-            LoftVertex::SketchVertex(id) => sketch.vertex_map[id],
+            LoftVertex::SketchVertex(id) => sketch.vertex_rotated(*id),
             LoftVertex::SketchEdge { edge, edge_length } => {
-                let a = sketch.vertex_map[&edge.0];
-                let b = sketch.vertex_map[&edge.1];
+                let a = sketch.vertex_rotated(edge.0);
+                let b = sketch.vertex_rotated(edge.1);
 
                 a + (b - a).normalize() * edge_length
             }
@@ -397,13 +390,30 @@ impl LoftVertex {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+struct LoftEdge {
+    edge: SketchPair<LoftVertex>,
+    color: Vec3,
+}
+
+impl From<SketchPair<LoftVertex>> for LoftEdge {
+    fn from(value: SketchPair<LoftVertex>) -> Self {
+        let mut rng = rand::rng();
+
+        Self {
+            edge: value,
+            color: Vec3::from_array(from_fn(|_| rng.random())),
+        }
+    }
+}
+
 /// Initializes the "physical" loft vertices and edges from a section's vertex
 /// ranges.
 fn build_loft_edges(
     sketch_vertex_ranges: SketchPair<SketchVertexRange>,
     sketches: SketchPair<&Sketch>,
     max_radial_error: f32,
-) -> Vec<SketchPair<LoftVertex>> {
+) -> Vec<LoftEdge> {
     let mut loft_edges = Vec::new();
 
     // Iterate vertices of each sketch edge in parallel.
@@ -425,7 +435,7 @@ fn build_loft_edges(
     {
         let current_vertex_positions = current_vertex_ids
             .zip(sketches)
-            .map(|(id, sketch)| sketch.vertex_map[&id]);
+            .map(|(id, sketch)| sketch.vertex_rotated(id));
 
         // If the current vertices can form a valid edge (i.e it is within
         // the allowed radial error), create the edge.
@@ -434,7 +444,11 @@ fn build_loft_edges(
             &current_vertex_positions.upper,
         ) <= max_radial_error
         {
-            loft_edges.push(current_vertex_ids.map(|id| LoftVertex::SketchVertex(id)));
+            loft_edges.push(
+                current_vertex_ids
+                    .map(|id| LoftVertex::SketchVertex(id))
+                    .into(),
+            );
         } else {
             // Form an intermediate edge for the CCW-most current vertex.
 
@@ -464,12 +478,12 @@ fn build_loft_edges(
                 *sketch_vertex_iters[pair_edge_index].peek().unwrap(),
             );
 
-            let vertex_position = sketches[pair_vertex_index].vertex_map[&vertex_id];
+            let vertex_position = sketches[pair_vertex_index].vertex_rotated(vertex_id);
             let edge_vertex_positions = {
                 let sketch = &sketches[pair_edge_index];
                 (
-                    &sketch.vertex_map[&edge_vertex_ids.0],
-                    &sketch.vertex_map[&edge_vertex_ids.1],
+                    &sketch.vertex_rotated(edge_vertex_ids.0),
+                    &sketch.vertex_rotated(edge_vertex_ids.1),
                 )
             };
 
@@ -487,7 +501,7 @@ fn build_loft_edges(
                 SketchPair::new(loft_vertex_edge, loft_vertex_vertex)
             };
 
-            loft_edges.push(loft_edge);
+            loft_edges.push(loft_edge.into());
         }
 
         // Increment the vertex iterator for one of the sketches.
@@ -495,7 +509,7 @@ fn build_loft_edges(
         let next_vertex_positions = sketch_vertex_iters
             .as_mut()
             .zip(sketches)
-            .map(|(iter, sketch)| iter.peek().map(|id| sketch.vertex_map[id]));
+            .map(|(iter, sketch)| iter.peek().map(|id| sketch.vertex_rotated(*id)));
 
         if next_vertex_positions.lower.is_some() && next_vertex_positions.upper.is_none() {
             current_vertex_ids.lower = sketch_vertex_iters.lower.next().unwrap();

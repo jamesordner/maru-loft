@@ -26,6 +26,14 @@ pub struct Sketch {
     pub rotation: Vec3,
 }
 
+impl Sketch {
+    /// Returns the vertex position with rotation applied. Relative position is
+    /// not applied.
+    pub fn vertex_rotated(&self, vertex_id: VertexId) -> Vec3 {
+        self.vertex_map[&vertex_id].rotate_z(self.rotation.z.to_radians())
+    }
+}
+
 impl From<&SketchDescriptor> for Sketch {
     fn from(value: &SketchDescriptor) -> Self {
         let mut vertex_map = HashMap::with_capacity(value.vertices.len());

@@ -40,7 +40,7 @@ impl Default for Lofter {
             loft_maps: Default::default(),
         };
 
-        let mut vertices = vec![
+        let vertices = vec![
             Vec3::new(1., 0., 0.),
             Vec3::new(0., 1., 0.),
             Vec3::new(-1., 0., 0.),
@@ -52,10 +52,6 @@ impl Default for Lofter {
             relative_position: Vec3::ZERO,
             rotation: Vec3::ZERO,
         });
-
-        for vertex in &mut vertices {
-            *vertex = vertex.rotate_z(std::f32::consts::PI / 4.);
-        }
 
         lofter.push_sketch(&SketchDescriptor {
             vertices,
@@ -203,12 +199,17 @@ fn edge_candidates(sketches: SketchPair<&Sketch>) -> Vec<EdgeCandidate> {
     let a = sketches.lower;
     let b = sketches.upper;
 
-    a.vertex_map
+    a.vertex_order
         .iter()
-        .flat_map(|v_a| b.vertex_map.iter().map(move |v_b| (v_a, v_b)))
+        .map(|&id| (id, a.vertex_rotated(id)))
+        .flat_map(|v_a| {
+            b.vertex_order
+                .iter()
+                .map(move |&id| (v_a, (id, b.vertex_rotated(id))))
+        })
         .map(|(v_a, v_b)| EdgeCandidate {
-            radial_error: radial_error(v_a.1, v_b.1),
-            vertices: SketchPair::new(*v_a.0, *v_b.0),
+            radial_error: radial_error(&v_a.1, &v_b.1),
+            vertices: SketchPair::new(v_a.0, v_b.0),
         })
         .collect()
 }

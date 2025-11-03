@@ -122,10 +122,14 @@ impl ApplicationHandler for App {
                     self.lofter.loft(&LoftOptions {
                         max_radial_edge_angle: imgui.loft_state.max_angle,
                     });
-
-                    let vertex_buffer = self.lofter.vertex_buffer();
-                    app_window.renderer.set_loft_vertex_buffer(&vertex_buffer);
                 }
+
+                self.lofter
+                    .set_sketch_rotation(1, &Vec3::new(0., 0., imgui.loft_state.rotation));
+
+                // Todo: don't do this every frame.
+                let vertex_buffer = self.lofter.vertex_buffer();
+                app_window.renderer.set_loft_vertex_buffer(&vertex_buffer);
 
                 surface.present();
             }
