@@ -26,12 +26,47 @@ impl Default for LoftOptions {
     }
 }
 
-#[derive(Default)]
 pub struct Lofter {
     sketches: Vec<Sketch>,
     /// Mappings for each pair of sketches. There will always be one-fewer
     /// mappings than the number of sketches.
     loft_maps: Vec<Loft>,
+}
+
+impl Default for Lofter {
+    fn default() -> Self {
+        let mut lofter = Self {
+            sketches: Default::default(),
+            loft_maps: Default::default(),
+        };
+
+        let mut vertices = vec![
+            Vec3::new(1., 0., 0.),
+            Vec3::new(0., 1., 0.),
+            Vec3::new(-1., 0., 0.),
+            Vec3::new(0., -1., 0.),
+        ];
+
+        lofter.push_sketch(&SketchDescriptor {
+            vertices: vertices.clone(),
+            relative_position: Vec3::ZERO,
+            rotation: Vec3::ZERO,
+        });
+
+        for vertex in &mut vertices {
+            *vertex = vertex.rotate_z(std::f32::consts::PI / 4.);
+        }
+
+        lofter.push_sketch(&SketchDescriptor {
+            vertices,
+            relative_position: Vec3::new(0., 0., 3.),
+            rotation: Vec3::ZERO,
+        });
+
+        lofter.loft(&Default::default());
+
+        lofter
+    }
 }
 
 impl Lofter {
@@ -115,7 +150,7 @@ impl Lofter {
             .collect();
     }
 
-    pub fn vertex_buffer(&self) -> Vec<[Vec3; 3]> {
+    pub fn vertex_buffer(&self) -> Vec<[[Vec3; 2]; 3]> {
         let mut vertex_buffer = Vec::new();
 
         let sketches = self.sketches.windows(2);

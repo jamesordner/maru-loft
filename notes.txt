@@ -44,7 +44,10 @@ Stateful + serializable state, for synchronization.
 
 ## Dependencies
 
-- *glam:* linear algebra.
+- glam: linear algebra.
+- wgpu: gpu api.
+- imgui: ui.
+- imgui-wgpu: imgui wgpu integration.
 
 ## Progress Log
 

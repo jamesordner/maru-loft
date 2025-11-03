@@ -5,3 +5,5 @@ members = ["crates/*"]
 
 [workspace.dependencies]
 glam = "0.30.9"
+
+lofter.path = "crates/lofter"

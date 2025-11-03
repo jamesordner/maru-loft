@@ -12,6 +12,7 @@ pub struct SketchDescriptor {
     pub rotation: Vec3,
 }
 
+#[derive(Debug)]
 pub struct Sketch {
     /// The vertices of the sketch. These are stored in a HashMap so that their
     /// IDs are stable on insertion/removal (as opposed to indices in a `Vec`).

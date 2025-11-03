@@ -1,0 +1,169 @@
+use std::time::Instant;
+
+use imgui::{Condition, FontSource, MouseCursor};
+use imgui_wgpu::RendererConfig;
+use imgui_winit_support::WinitPlatform;
+use winit::event::Event;
+
+use crate::render::Renderer;
+
+pub struct ImguiState {
+    context: imgui::Context,
+    platform: WinitPlatform,
+    renderer: imgui_wgpu::Renderer,
+    last_frame: Instant,
+    last_cursor: Option<MouseCursor>,
+    pub loft_state: LoftState,
+}
+
+pub struct LoftState {
+    pub reloft: bool,
+    pub max_angle: f32,
+}
+
+impl Default for LoftState {
+    fn default() -> Self {
+        Self {
+            reloft: false,
+            max_angle: 30.,
+        }
+    }
+}
+
+impl ImguiState {
+    pub fn new(renderer: &Renderer, hidpi_factor: f32) -> Self {
+        let mut context = imgui::Context::create();
+        let mut platform = imgui_winit_support::WinitPlatform::new(&mut context);
+        platform.attach_window(
+            context.io_mut(),
+            &renderer.window,
+            imgui_winit_support::HiDpiMode::Default,
+        );
+        context.set_ini_filename(None);
+
+        let font_size = 13.0 * hidpi_factor;
+        context.io_mut().font_global_scale = 1.0 / hidpi_factor;
+
+        context.fonts().add_font(&[FontSource::DefaultFontData {
+            config: Some(imgui::FontConfig {
+                oversample_h: 1,
+                pixel_snap_h: true,
+                size_pixels: font_size,
+                ..Default::default()
+            }),
+        }]);
+
+        let renderer_config = RendererConfig {
+            texture_format: renderer.surface_config.format,
+            ..Default::default()
+        };
+
+        let renderer = imgui_wgpu::Renderer::new(
+            &mut context,
+            &renderer.device,
+            &renderer.queue,
+            renderer_config,
+        );
+
+        let last_frame = Instant::now();
+        let last_cursor = None;
+
+        Self {
+            context,
+            platform,
+            renderer,
+            last_frame,
+            last_cursor,
+            loft_state: Default::default(),
+        }
+    }
+
+    pub fn handle_event(&mut self, renderer: &Renderer, event: &Event<()>) {
+        self.platform
+            .handle_event::<()>(self.context.io_mut(), &renderer.window, event);
+    }
+
+    /// Todo: return UI events.
+    pub fn draw(&mut self, renderer: &Renderer, view: &wgpu::TextureView) {
+        let now = Instant::now();
+        self.context
+            .io_mut()
+            .update_delta_time(now - self.last_frame);
+        self.last_frame = now;
+
+        self.platform
+            .prepare_frame(self.context.io_mut(), &renderer.window)
+            .unwrap();
+
+        let ui = self.context.frame();
+
+        {
+            let mp = ui.io().mouse_pos;
+
+            let window = ui.window("Lofter");
+            window
+                .size([300.0, 100.0], Condition::FirstUseEver)
+                .build(|| {
+                    ui.text("Something about sketches perhaps");
+                    ui.separator();
+
+                    ui.slider("Max angle", 0.1, 60., &mut self.loft_state.max_angle);
+
+                    ui.separator();
+
+                    if ui.button("Loft") {
+                        self.loft_state.reloft = true;
+                    }
+
+                    let draw_list = ui.get_window_draw_list();
+                    draw_list
+                        .add_polyline(
+                            vec![
+                                [mp[0], mp[1] + 5.],
+                                [mp[0] - 5., mp[1] - 5.],
+                                [mp[0] + 5., mp[1] - 5.],
+                            ],
+                            [1., 0., 0.],
+                        )
+                        .build();
+                });
+        }
+
+        let mut encoder: wgpu::CommandEncoder = renderer
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+        if self.last_cursor != ui.mouse_cursor() {
+            self.last_cursor = ui.mouse_cursor();
+            self.platform.prepare_render(ui, &renderer.window);
+        }
+
+        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: None,
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+
+        self.renderer
+            .render(
+                self.context.render(),
+                &renderer.queue,
+                &renderer.device,
+                &mut rpass,
+            )
+            .expect("Rendering failed");
+
+        drop(rpass);
+
+        renderer.queue.submit(Some(encoder.finish()));
+    }
+}
